@@ -1,9 +1,9 @@
-#include <cassert>
+#include <assert.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-long double factorial(int n, int depth = 0) {
+long double factorial(int n, int depth) {
     if (n <= 0) {
         return 1;
     }
@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
 
     MPI_Finalize();
 
-    res /= (long double)factorial(steps);
+    res /= (long double)factorial(steps, 0);
 
     if (my_rank == 0) {
         printf("euler:      %.20llf, steps: %d, processes: %d\n", res, steps, world_size);

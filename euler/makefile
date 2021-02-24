@@ -3,14 +3,14 @@ MPI_LINK_FLAGS = $(shell mpicc --showme:link)
 
 all: build euler-l euler-p euler-p-la
 
-euler-l: euler-linear.cpp
-	g++ -o bin/euler-l.out euler-linear.cpp
+euler-l: euler-linear.c
+	g++ -o bin/euler-l.out euler-linear.c
 
-euler-p: euler-parallel.cpp
-	mpic++ $(MPI_COMPILE_FLAGS) euler-parallel.cpp $(MPI_LINK_FLAGS) -o bin/euler-parallel.out
+euler-p: euler-parallel.c
+	mpic++ $(MPI_COMPILE_FLAGS) euler-parallel.c $(MPI_LINK_FLAGS) -o bin/euler-parallel.out
 
-euler-p-la: euler-parallel-la.cpp
-	mpic++ $(MPI_COMPILE_FLAGS) euler-parallel-la.cpp $(MPI_LINK_FLAGS) -o bin/euler-parallel-la.out
+euler-p-la: euler-parallel-la.c
+	mpic++ $(MPI_COMPILE_FLAGS) euler-parallel-la.c $(MPI_LINK_FLAGS) -o bin/euler-parallel-la.out
 
 build:
 	mkdir -p bin/
