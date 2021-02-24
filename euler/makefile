@@ -7,10 +7,10 @@ euler-l: euler-linear.c
 	g++ -o bin/euler-l.out euler-linear.c
 
 euler-p: euler-parallel.c
-	mpic++ $(MPI_COMPILE_FLAGS) euler-parallel.c $(MPI_LINK_FLAGS) -o bin/euler-parallel.out
+	mpicc $(MPI_COMPILE_FLAGS) euler-parallel.c $(MPI_LINK_FLAGS) -o bin/euler-parallel.out
 
 euler-p-la: euler-parallel-la.c
-	mpic++ $(MPI_COMPILE_FLAGS) euler-parallel-la.c $(MPI_LINK_FLAGS) -o bin/euler-parallel-la.out
+	mpicc $(MPI_COMPILE_FLAGS) euler-parallel-la.c $(MPI_LINK_FLAGS) -o bin/euler-parallel-la.out
 
 build:
 	mkdir -p bin/
