@@ -2,6 +2,7 @@
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 long double factorial(int n, int depth) {
     if (n <= 0) {
@@ -18,6 +19,8 @@ long double factorial(int n, int depth) {
 }
 
 int main(int argc, char** argv) {
+    clock_t t_begin = clock();
+
     assert(argc >= 2);
     long double res = 0.0;
 
@@ -50,9 +53,13 @@ int main(int argc, char** argv) {
 
     res /= (long double)factorial(steps, 0);
 
+    clock_t t_end = clock();
+    double elapsed_time = (double)(t_end - t_begin) / CLOCKS_PER_SEC;
+
     if (my_rank == 0) {
         printf("euler:      %.20llf, steps: %d, processes: %d\n", res, steps, world_size);
         printf("true euler: 2.71828182845904523536028747135266249775724709369995...\n");
+        printf("\nelapsed time: %.10f s\n", elapsed_time);
     }
 
     return 0;
