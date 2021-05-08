@@ -7,6 +7,9 @@
 #define DEBUG
 #undef DEBUG
 
+#define PARALLEL
+// #undef PARALLEL
+
 typedef double point_t;
 
 typedef point_t (*func_bound_t)(point_t);
@@ -51,6 +54,7 @@ void calculate_linear(point_t* result);
 int main(int argc, char** argv) {
     clock_t t_begin_total = clock();
 
+#ifdef PARALLEL
     int err = 0;
     err = MPI_Init(&argc, &argv);
     assert(err == 0);
@@ -144,10 +148,6 @@ int main(int argc, char** argv) {
     // calculate results
     calculate(result, map);
 
-    // if (PROC_RANK == ROOT_PROC) {
-    //     calculate_linear(result);
-    // }
-
     clock_t t_end = clock();
     double elapsed_time = (double)(t_end - t_begin) / CLOCKS_PER_SEC;
     double elapsed_time_total = (double)(t_end - t_begin_total) / CLOCKS_PER_SEC;
@@ -181,6 +181,22 @@ int main(int argc, char** argv) {
 
     err = MPI_Finalize();
     assert(err == 0);
+#else
+
+    point_t* result = (point_t*)calloc(X_STEPS * T_STEPS, sizeof(point_t));
+
+    clock_t t_begin = clock();
+
+    calculate_linear(result);
+
+    clock_t t_end = clock();
+    double elapsed_time = (double)(t_end - t_begin) / CLOCKS_PER_SEC;
+    double elapsed_time_total = (double)(t_end - t_begin_total) / CLOCKS_PER_SEC;
+
+    printf("[TOTAL]       elapsed time: %.10f s\n", elapsed_time_total);
+    printf("[CALCULATION] elapsed time: %.10f s\n", elapsed_time);
+
+#endif
 
     return 0;
 }
