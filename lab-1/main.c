@@ -5,7 +5,7 @@
 #include <time.h>
 
 #define DEBUG
-// #undef DEBUG
+#undef DEBUG
 
 typedef double point_t;
 
@@ -14,33 +14,18 @@ typedef point_t (*func_t)(point_t, point_t);
 
 const point_t X_FROM = 0.0;
 const point_t X_TO = 1.0;
-const size_t X_STEPS = 10;
+const size_t X_STEPS = 100;
 
 const point_t T_FROM = 0.0;
 const point_t T_TO = 1.0;
-const size_t T_STEPS = 10;
+const size_t T_STEPS = 100;
 
 const int ROOT_PROC = 0;
 int PROC_RANK = 0;
 int N_PROC = 0;
 
-// returns value of u_(m)^(k + 1)
-point_t sheme_cross(const size_t k, const point_t tau, const size_t m, const point_t h,
-                    const point_t* u, const point_t f_k_m, const size_t segment_size) {
-    return (f_k_m - (u[segment_size * k + m + 1] - u[segment_size * k + m - 1]) / (2 * h)) *
-               (2 * tau) +
-           u[segment_size * (k - 1) + m];
-}
-
-// returns value of u_(m)^(k + 1)
-point_t sheme_langle(const size_t k, const point_t tau, const size_t m, const point_t h,
-                     const point_t* u, const point_t f_k_m, const size_t segment_size) {
-    return (f_k_m - (u[segment_size * k + m] - u[segment_size * k + m - 1]) / h) * tau +
-           u[segment_size * k + m];
-}
-
 point_t f(point_t x, point_t t) {
-    return x - t;
+    return x + t;
 }
 
 point_t phi(point_t x) {
@@ -122,6 +107,7 @@ int main(int argc, char** argv) {
         // master stores the entire grid
         size_t n_elements = X_STEPS * T_STEPS;
         result = (point_t*)calloc(n_elements, sizeof(point_t));
+
 #ifdef DEBUG
         printf("process %d, allocated %d bytes\n", PROC_RANK, n_elements * sizeof(point_t));
 #endif
@@ -130,12 +116,14 @@ int main(int argc, char** argv) {
         // except for the lat one, that doesn't need one extra on the right
         size_t n_elements = T_STEPS * (map[PROC_RANK].end - map[PROC_RANK].begin + 2);
         result = (point_t*)calloc(n_elements, sizeof(point_t));
+
 #ifdef DEBUG
         printf("process %d, allocated %d bytes\n", PROC_RANK, n_elements * sizeof(point_t));
 #endif
     } else {
         size_t n_elements = T_STEPS * (map[PROC_RANK].end - map[PROC_RANK].begin + 1);
         result = (point_t*)calloc(n_elements, sizeof(point_t));
+
 #ifdef DEBUG
         printf("process %d, allocated %d bytes\n", PROC_RANK, n_elements * sizeof(point_t));
 #endif
@@ -147,6 +135,28 @@ int main(int argc, char** argv) {
 
     // calculate results
     calculate(result, map);
+
+    if (PROC_RANK == ROOT_PROC) {
+        FILE* out;
+
+        out = fopen("res.csv", "w+");
+        fprintf(out, "x,t,u\n");
+
+        const point_t step_x = (X_TO - X_FROM) / X_STEPS;
+        const point_t step_t = (T_TO - T_FROM) / T_STEPS;
+
+        for (size_t t = 0; t < T_STEPS; t++) {
+            for (size_t x = 0; x < X_STEPS; x++) {
+                fprintf(out,
+                        "%f,%f,%f\n",
+                        X_FROM + x * step_x,
+                        T_FROM + t * step_t,
+                        result[X_STEPS * t + x]);
+            }
+        }
+
+        fclose(out);
+    }
 
     err = MPI_Finalize();
     assert(err == 0);
@@ -182,13 +192,6 @@ void calculate(point_t* result, pair_t* map) {
     // iterating upon t for specific x region, then syncronizig results with other nodes.
     // repeat
     for (size_t t = 0; t < T_STEPS; t++) {
-#ifdef DEBUG
-        printf("process %2d is calculating for t = %2d, x = [%2d, %2d)\n",
-               PROC_RANK,
-               t,
-               region_x_begin,
-               region_x_end);
-#endif
         for (size_t x = region_x_begin; x < region_x_end; x++) {
             // for iterating upon local array
             size_t x_local = x - region_x_begin;
@@ -206,28 +209,29 @@ void calculate(point_t* result, pair_t* map) {
                 continue;
             }
 
+            const size_t k_next_m = row_length * t + x_local;
+            const size_t k_prev_m = row_length * (t - 2) + x_local;
+            const size_t k_m = row_length * (t - 1) + x_local;
+            const size_t k_m_next = row_length * (t - 1) + x_local + 1;
+            const size_t k_m_prev = row_length * (t - 1) + x_local - 1;
+            const double f_k_m = f(X_FROM + x * step_x, T_FROM + t * step_t);
+
+            // langle scheme
             if (x == 1 || t == T_STEPS - 1) {
-                result[row_length * t + x_local] = 1; // FIXME: langle
+                result[k_next_m] =
+                    (f_k_m - (result[k_m] - result[k_m_prev]) / step_x) * step_t + result[k_m];
                 continue;
             }
 
-            result[row_length * t + x_local] = 2.0; // FIXME: cross
-#ifdef DEBUG
-            printf("process %2d, offset %d\n", PROC_RANK, row_length * t + x_local);
-#endif
+            // cross scheme
+            result[k_next_m] =
+                (f_k_m - (result[k_m_next] - result[k_m_prev]) / (2.0 * step_x)) * 2.0 * step_t +
+                result[k_prev_m];
         }
 
         // syncronize master and slaves. first, master recieves data from each process. then, each
         // process recieves needed nodes
         MPI_Status status;
-
-#ifdef DEBUG
-        printf("process %2d finished calculating for t = %2d, x = [%2d, %2d)\n",
-               PROC_RANK,
-               t,
-               region_x_begin,
-               region_x_end);
-#endif
 
         // recieve directly calculated values from each process
         if (PROC_RANK == ROOT_PROC) {
@@ -282,8 +286,9 @@ void calculate(point_t* result, pair_t* map) {
                 offset += n_elements;
 
 #ifdef DEBUG
-                printf("ROOT process sent %d th element to process %d as -1th\n",
+                printf("ROOT process sent %d th element (%f) to process %d as -1th\n",
                        X_STEPS * t + offset - 1 - n_elements,
+                       result[X_STEPS * t + offset - 1 - n_elements],
                        i);
 #endif
             }
@@ -291,13 +296,14 @@ void calculate(point_t* result, pair_t* map) {
             MPI_Recv(&result[row_length * t], 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
 
 #ifdef DEBUG
-            printf(
-                "process %d recieved %d th element from ROOT as -1th\n", PROC_RANK, row_length * t);
+            printf("process %d recieved %d th element (%f) from ROOT as -1th\n",
+                   PROC_RANK,
+                   row_length * t,
+                   result[row_length * t]);
 #endif
         }
 
         // wait untill each message has been sent
-        MPI_Barrier(MPI_COMM_WORLD);
         MPI_Barrier(MPI_COMM_WORLD);
 
         // send +1th elements
@@ -316,8 +322,9 @@ void calculate(point_t* result, pair_t* map) {
                 offset += n_elements;
 
 #ifdef DEBUG
-                printf("ROOT process sent %d th element to process %d as +1th\n",
+                printf("ROOT process sent %d th element (%f) to process %d as +1th\n",
                        X_STEPS * t + offset,
+                       result[X_STEPS * t + offset],
                        i);
 #endif
             }
@@ -326,9 +333,10 @@ void calculate(point_t* result, pair_t* map) {
                 &result[row_length * (t + 1) - 1], 1, MPI_DOUBLE, 0, 0, MPI_COMM_WORLD, &status);
 
 #ifdef DEBUG
-            printf("process %d recieved %d th element from ROOT as +1th\n",
+            printf("process %d recieved %d th element (%f) from ROOT as +1th\n",
                    PROC_RANK,
-                   row_length * (t + 1) - 1);
+                   row_length * (t + 1) - 1,
+                   result[row_length * (t + 1) - 1]);
 #endif
         }
 
