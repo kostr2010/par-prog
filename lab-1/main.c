@@ -25,15 +25,18 @@ int PROC_RANK = 0;
 int N_PROC = 0;
 
 point_t f(point_t x, point_t t) {
-    return x + t;
+    // return x + t;
+    return 1;
 }
 
 point_t phi(point_t x) {
-    return x;
+    // return x;
+    return 0;
 }
 
 point_t ksi(point_t t) {
-    return t;
+    // return t;
+    return 0;
 }
 
 struct pair_t {
@@ -45,6 +48,8 @@ typedef struct pair_t pair_t;
 void calculate(point_t* result, pair_t* map);
 
 int main(int argc, char** argv) {
+    clock_t t_begin_total = clock();
+
     int err = 0;
     err = MPI_Init(&argc, &argv);
     assert(err == 0);
@@ -133,8 +138,19 @@ int main(int argc, char** argv) {
     assert(result != NULL);
     MPI_Barrier(MPI_COMM_WORLD);
 
+    clock_t t_begin = clock();
+
     // calculate results
     calculate(result, map);
+
+    clock_t t_end = clock();
+    double elapsed_time = (double)(t_end - t_begin) / CLOCKS_PER_SEC;
+    double elapsed_time_total = (double)(t_end - t_begin_total) / CLOCKS_PER_SEC;
+
+    if (PROC_RANK == ROOT_PROC) {
+        printf("[TOTAL]       elapsed time: %.10f s\n", elapsed_time_total);
+        printf("[CALCULATION] elapsed time: %.10f s\n", elapsed_time);
+    }
 
     if (PROC_RANK == ROOT_PROC) {
         FILE* out;
@@ -217,7 +233,13 @@ void calculate(point_t* result, pair_t* map) {
             const double f_k_m = f(X_FROM + x * step_x, T_FROM + t * step_t);
 
             // langle scheme
-            if (x == 1 || t == T_STEPS - 1) {
+            if (t == 1 || x == X_STEPS - 1) {
+                printf("proc %d, t=%d,x=%d\n>>>> result=%f\n",
+                       PROC_RANK,
+                       t,
+                       x,
+                       (f_k_m - (result[k_m] - result[k_m_prev]) / step_x) * step_t + result[k_m]);
+
                 result[k_next_m] =
                     (f_k_m - (result[k_m] - result[k_m_prev]) / step_x) * step_t + result[k_m];
                 continue;
@@ -339,6 +361,58 @@ void calculate(point_t* result, pair_t* map) {
                    result[row_length * (t + 1) - 1]);
 #endif
         }
+
+        // wait untill each message has been sent
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        // if (PROC_RANK == ROOT_PROC) {
+        //     printf("> after step %d root has this table:\n", t);
+        //     for (int i = t; i >= 0; i--) {
+        //         for (int j = 0; j < X_STEPS; j++) {
+        //             printf("%10f, ", result[X_STEPS * i + j]);
+        //         }
+        //         printf("\n");
+        //     }
+        // }
+
+        // wait untill each message has been sent
+        MPI_Barrier(MPI_COMM_WORLD);
+
+        // if (PROC_RANK == 1) {
+        //     printf("> after step %d process %d has this table:\n", t, PROC_RANK);
+        //     for (int i = t; i >= 0; i--) {
+        //         for (int j = 0; j < row_length; j++) {
+        //             printf("%10f, ", result[row_length * i + j]);
+        //         }
+        //         printf("\n");
+        //     }
+        // }
+
+        // // wait untill each message has been sent
+        // MPI_Barrier(MPI_COMM_WORLD);
+
+        // if (PROC_RANK == 2) {
+        //     printf("> after step %d process %d has this table:\n", t, PROC_RANK);
+        //     for (int i = t; i >= 0; i--) {
+        //         for (int j = 0; j < row_length; j++) {
+        //             printf("%10f, ", result[row_length * i + j]);
+        //         }
+        //         printf("\n");
+        //     }
+        // }
+
+        // // wait untill each message has been sent
+        // MPI_Barrier(MPI_COMM_WORLD);
+
+        // if (PROC_RANK == 3) {
+        //     printf("> after step %d process %d has this table:\n", t, PROC_RANK);
+        //     for (int i = t; i >= 0; i--) {
+        //         for (int j = 0; j < row_length; j++) {
+        //             printf("%10f, ", result[row_length * i + j]);
+        //         }
+        //         printf("\n");
+        //     }
+        // }
 
         // wait untill each message has been sent
         MPI_Barrier(MPI_COMM_WORLD);
