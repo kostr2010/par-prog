@@ -14,11 +14,11 @@ typedef point_t (*func_t)(point_t, point_t);
 
 const point_t X_FROM = 0.0;
 const point_t X_TO = 1.0;
-const size_t X_STEPS = 100;
+const size_t X_STEPS = 200;
 
 const point_t T_FROM = 0.0;
 const point_t T_TO = 1.0;
-const size_t T_STEPS = 100;
+const size_t T_STEPS = 200;
 
 const int ROOT_PROC = 0;
 int PROC_RANK = 0;
@@ -26,7 +26,7 @@ int N_PROC = 0;
 
 point_t f(point_t x, point_t t) {
     // return x + t;
-    return 1;
+    return t / (x + 1);
 }
 
 point_t phi(point_t x) {
@@ -234,12 +234,6 @@ void calculate(point_t* result, pair_t* map) {
 
             // langle scheme
             if (t == 1 || x == X_STEPS - 1) {
-                printf("proc %d, t=%d,x=%d\n>>>> result=%f\n",
-                       PROC_RANK,
-                       t,
-                       x,
-                       (f_k_m - (result[k_m] - result[k_m_prev]) / step_x) * step_t + result[k_m]);
-
                 result[k_next_m] =
                     (f_k_m - (result[k_m] - result[k_m_prev]) / step_x) * step_t + result[k_m];
                 continue;
@@ -362,57 +356,20 @@ void calculate(point_t* result, pair_t* map) {
 #endif
         }
 
+#ifdef DEBUG
         // wait untill each message has been sent
         MPI_Barrier(MPI_COMM_WORLD);
 
-        // if (PROC_RANK == ROOT_PROC) {
-        //     printf("> after step %d root has this table:\n", t);
-        //     for (int i = t; i >= 0; i--) {
-        //         for (int j = 0; j < X_STEPS; j++) {
-        //             printf("%10f, ", result[X_STEPS * i + j]);
-        //         }
-        //         printf("\n");
-        //     }
-        // }
-
-        // wait untill each message has been sent
-        MPI_Barrier(MPI_COMM_WORLD);
-
-        // if (PROC_RANK == 1) {
-        //     printf("> after step %d process %d has this table:\n", t, PROC_RANK);
-        //     for (int i = t; i >= 0; i--) {
-        //         for (int j = 0; j < row_length; j++) {
-        //             printf("%10f, ", result[row_length * i + j]);
-        //         }
-        //         printf("\n");
-        //     }
-        // }
-
-        // // wait untill each message has been sent
-        // MPI_Barrier(MPI_COMM_WORLD);
-
-        // if (PROC_RANK == 2) {
-        //     printf("> after step %d process %d has this table:\n", t, PROC_RANK);
-        //     for (int i = t; i >= 0; i--) {
-        //         for (int j = 0; j < row_length; j++) {
-        //             printf("%10f, ", result[row_length * i + j]);
-        //         }
-        //         printf("\n");
-        //     }
-        // }
-
-        // // wait untill each message has been sent
-        // MPI_Barrier(MPI_COMM_WORLD);
-
-        // if (PROC_RANK == 3) {
-        //     printf("> after step %d process %d has this table:\n", t, PROC_RANK);
-        //     for (int i = t; i >= 0; i--) {
-        //         for (int j = 0; j < row_length; j++) {
-        //             printf("%10f, ", result[row_length * i + j]);
-        //         }
-        //         printf("\n");
-        //     }
-        // }
+        if (PROC_RANK == ROOT_PROC) {
+            printf("> after step %d root has this table:\n", t);
+            for (int i = t; i >= 0; i--) {
+                for (int j = 0; j < X_STEPS; j++) {
+                    printf("%10f, ", result[X_STEPS * i + j]);
+                }
+                printf("\n");
+            }
+        }
+#endif
 
         // wait untill each message has been sent
         MPI_Barrier(MPI_COMM_WORLD);
