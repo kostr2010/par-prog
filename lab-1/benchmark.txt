@@ -1,0 +1,7 @@
+elapsed time on calculations:
+
+4 proc:
+    linear:   0.000482s
+    parallel: 0.00156s
+
+parallel program uses too much resources on joining threads and sending data. that's why this implementation is slower

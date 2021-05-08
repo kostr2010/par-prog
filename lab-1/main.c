@@ -46,6 +46,7 @@ struct pair_t {
 typedef struct pair_t pair_t;
 
 void calculate(point_t* result, pair_t* map);
+void calculate_linear(point_t* result);
 
 int main(int argc, char** argv) {
     clock_t t_begin_total = clock();
@@ -143,6 +144,10 @@ int main(int argc, char** argv) {
     // calculate results
     calculate(result, map);
 
+    // if (PROC_RANK == ROOT_PROC) {
+    //     calculate_linear(result);
+    // }
+
     clock_t t_end = clock();
     double elapsed_time = (double)(t_end - t_begin) / CLOCKS_PER_SEC;
     double elapsed_time_total = (double)(t_end - t_begin_total) / CLOCKS_PER_SEC;
@@ -188,6 +193,11 @@ void calculate(point_t* result, pair_t* map) {
     const size_t region_x_begin = map[PROC_RANK].begin;
     const size_t region_x_end = map[PROC_RANK].end;
 
+    // thread not used in calculations
+    if (region_x_end == -1 && region_x_begin == -1) {
+        return;
+    }
+
     size_t row_length = 0;
     if (PROC_RANK == ROOT_PROC) {
         row_length = X_STEPS;
@@ -196,14 +206,6 @@ void calculate(point_t* result, pair_t* map) {
     } else {
         row_length = region_x_end - region_x_begin + 1;
     }
-
-    /**
-     * memmaps:
-     * ROOT:
-     * [0][1] ... [N]  (entire grid)
-     * OTHER:
-     * [-1][0] ... [n][n+1] (two extra: one on the left, one on the right)
-     */
 
     // iterating upon t for specific x region, then syncronizig results with other nodes.
     // repeat
@@ -373,5 +375,44 @@ void calculate(point_t* result, pair_t* map) {
 
         // wait untill each message has been sent
         MPI_Barrier(MPI_COMM_WORLD);
+    }
+}
+
+void calculate_linear(point_t* result) {
+    // pre calculating some constants
+    const point_t step_x = (X_TO - X_FROM) / X_STEPS;
+    const point_t step_t = (T_TO - T_FROM) / T_STEPS;
+
+    for (size_t t = 0; t < T_STEPS; t++) {
+        for (size_t x = 0; x < X_STEPS; x++) {
+            if (t == 0) {
+                result[X_STEPS * t + x] = phi(X_FROM + x * step_x);
+                continue;
+            }
+
+            if (x == 0) {
+                result[X_STEPS * t + x] = ksi(T_FROM + t * step_t);
+                continue;
+            }
+
+            const size_t k_next_m = X_STEPS * t + x;
+            const size_t k_prev_m = X_STEPS * (t - 2) + x;
+            const size_t k_m = X_STEPS * (t - 1) + x;
+            const size_t k_m_next = X_STEPS * (t - 1) + x + 1;
+            const size_t k_m_prev = X_STEPS * (t - 1) + x - 1;
+            const double f_k_m = f(X_FROM + x * step_x, T_FROM + t * step_t);
+
+            // langle scheme
+            if (t == 1 || x == X_STEPS - 1) {
+                result[k_next_m] =
+                    (f_k_m - (result[k_m] - result[k_m_prev]) / step_x) * step_t + result[k_m];
+                continue;
+            }
+
+            // cross scheme
+            result[k_next_m] =
+                (f_k_m - (result[k_m_next] - result[k_m_prev]) / (2.0 * step_x)) * 2.0 * step_t +
+                result[k_prev_m];
+        }
     }
 }

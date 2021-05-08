@@ -4,7 +4,7 @@ solving convection equation using cross-scheme (and left-angle scheme on the bor
 
 # BUILD & RUN
 
-to compile, run `mpicc -o main main.c`
+to compile, run `mpicc -o main.out main.c`
 
 to run, execute `mpirun -np <N_PROC>`
 
