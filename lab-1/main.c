@@ -12,9 +12,6 @@
 
 typedef double point_t;
 
-typedef point_t (*func_bound_t)(point_t);
-typedef point_t (*func_t)(point_t, point_t);
-
 const point_t X_FROM = 0.0;
 const point_t X_TO = 1.0;
 const size_t X_STEPS = 200;
@@ -28,17 +25,14 @@ int PROC_RANK = 0;
 int N_PROC = 0;
 
 point_t f(point_t x, point_t t) {
-    // return x + t;
-    return t / (x + 1);
+    return 1;
 }
 
 point_t phi(point_t x) {
-    // return x;
     return 0;
 }
 
 point_t ksi(point_t t) {
-    // return t;
     return 0;
 }
 
@@ -124,6 +118,8 @@ int main(int argc, char** argv) {
     } else if (PROC_RANK != N_PROC - 1) {
         // slave stores only his span, and two nodes extra - one left and one right
         // except for the lat one, that doesn't need one extra on the right
+        // TODO: it's enough to allocate only 3 * (map[PROC_RANK].end - map[PROC_RANK].begin + 2)
+        // elements and iterate using t % 3. probably need to implement
         size_t n_elements = T_STEPS * (map[PROC_RANK].end - map[PROC_RANK].begin + 2);
         result = (point_t*)calloc(n_elements, sizeof(point_t));
 
