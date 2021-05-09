@@ -20,6 +20,8 @@ const point_t T_FROM = 0.0;
 const point_t T_TO = 1.0;
 const size_t T_STEPS = 200;
 
+const double COEFF_A = 1.0;
+
 const int ROOT_PROC = 0;
 int PROC_RANK = 0;
 int N_PROC = 0;
@@ -249,13 +251,15 @@ void calculate(point_t* result, pair_t* map) {
             // langle scheme
             if (t == 1 || x == X_STEPS - 1) {
                 result[k_next_m] =
-                    (f_k_m - (result[k_m] - result[k_m_prev]) / step_x) * step_t + result[k_m];
+                    (f_k_m - COEFF_A * (result[k_m] - result[k_m_prev]) / step_x) * step_t +
+                    result[k_m];
                 continue;
             }
 
             // cross scheme
             result[k_next_m] =
-                (f_k_m - (result[k_m_next] - result[k_m_prev]) / (2.0 * step_x)) * 2.0 * step_t +
+                (f_k_m - COEFF_A * (result[k_m_next] - result[k_m_prev]) / (2.0 * step_x)) * 2.0 *
+                    step_t +
                 result[k_prev_m];
         }
 
