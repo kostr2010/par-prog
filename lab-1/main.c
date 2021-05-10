@@ -136,9 +136,9 @@ int main(int argc, char** argv) {
         printf("process %d, allocated %d bytes\n", PROC_RANK, n_elements * sizeof(point_t));
 #endif
     }
-
-    // syncronize
     assert(result != NULL);
+
+    // syncronize after allocation
     MPI_Barrier(MPI_COMM_WORLD);
 
     clock_t t_begin = clock();
@@ -388,9 +388,6 @@ void calculate(point_t* result, pair_t* map) {
             }
         }
 #endif
-
-        // wait untill each message has been sent
-        MPI_Barrier(MPI_COMM_WORLD);
     }
 }
 
