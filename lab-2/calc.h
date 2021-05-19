@@ -8,7 +8,7 @@
 #define PI 3.14159265358979323846
 #endif
 
-const size_t INTERVALS_N = 1e3;
+const size_t INTERVALS_N = 1e1;
 const double EPSILON = 1e-3;
 
 struct pair_t
@@ -66,7 +66,7 @@ double GetStep(const pair_t interval, const double epsilon)
     /**
      * lazy adaptive step
      */
-    static const double DIV = 1e4;
+    static const double DIV = 1e5;
     const double interm = fabs(interval.second + interval.first) / 2.0;
     const double res = interm - 1.0 / (PI + 1.0 / interm);
 

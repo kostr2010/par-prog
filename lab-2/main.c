@@ -48,6 +48,7 @@ int main(int argc, char** argv)
     }
 
     pthread_mutex_destroy(&(space.mux));
-    printf("%f\n", integral);
+    printf("result:         %.10f\n", integral);
+    printf("correct result: 0.504066\n");
     return 0;
 }
