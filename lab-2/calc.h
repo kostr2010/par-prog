@@ -66,24 +66,24 @@ double GetStep(const pair_t interval, const double epsilon)
     /**
      * lazy adaptive step
      */
-    static const double DIV = 1e5;
+    static const double DIV = 1e4;
     const double interm = fabs(interval.second + interval.first) / 2.0;
     const double res = interm - 1.0 / (PI + 1.0 / interm);
+    double step_suggested =
+        sqrt(epsilon * 12 / ((interval.second - interval.first) * FindMaximum(interval, epsilon)));
 
-    if (res <= 2 * DIV * __DBL_EPSILON__)
+    if (res > step_suggested && step_suggested < length / DIV)
     {
-        return 2 * __DBL_EPSILON__;
+        return (step_suggested <= 2 * __DBL_EPSILON__) ? (2 * __DBL_EPSILON__) : (step_suggested);
+    }
+    else if (res <= step_suggested && res < length / DIV)
+    {
+        return (res <= 2 * __DBL_EPSILON__) ? (2 * __DBL_EPSILON__) : (res);
     }
     else
     {
-        return (res > length) ? (length / DIV) : (res / DIV);
+        return length / DIV;
     }
-
-    // double step_suggested =
-    //     sqrt(epsilon * 12 / ((interval.second - interval.first) * FindMaximum(interval,
-    //     epsilon)));
-
-    // return (step_suggested > length) ? (length) : (step_suggested);
 }
 
 double CalculatePartialIntegral(const pair_t interval, const double epsilon)
